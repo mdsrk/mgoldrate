@@ -27,21 +27,29 @@ async function fetchGoldRate() {
       const rateElement = showRateBlock.find('.price.22kt-price');
       console.log("Found .price.22kt-price element. HTML:", rateElement.html());
 
+      // Check if the element has content
+      if (rateElement.length) {
+        console.log("Extracting the gold rate text...");
+        const rate = rateElement.text().trim();
+        console.log("Gold rate extracted:", rate);
+      } else {
+        console.log("The .price.22kt-price element was not found.");
+      }
+
       // Select and extract the .date.update-date element
       console.log("Selecting the .date.update-date element...");
       const dateElement = showRateBlock.find('.date.update-date');
       console.log("Found .date.update-date element. HTML:", dateElement.html());
 
-      // Extract the text content
-      console.log("Extracting the gold rate text...");
-      const rate = rateElement.text().trim();
-      console.log("Gold rate extracted:", rate);
+      if (dateElement.length) {
+        console.log("Extracting the update date text...");
+        const date = dateElement.text().trim();
+        console.log("Update date extracted:", date);
+      } else {
+        console.log("The .date.update-date element was not found.");
+      }
 
-      console.log("Extracting the update date text...");
-      const date = dateElement.text().trim();
-      console.log("Update date extracted:", date);
-
-      if (rate && date) {
+      if (rateElement.length && dateElement.length) {
         console.log("Both gold rate and date were successfully extracted.");
 
         // Create new row for the HTML table
