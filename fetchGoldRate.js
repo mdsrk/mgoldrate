@@ -25,6 +25,7 @@ async function getGoldRate() {
 
     console.log('Extracting gold rate and date from the page...');
     const result = await page.evaluate(() => {
+      // Ensure we are using valid CSS selectors
       const rateElement = document.querySelector('#show-rate-block .price.22kt-price');
       const dateElement = document.querySelector('#show-rate-block .date.update-date');
 
