@@ -11,10 +11,10 @@ jobs:
 
     steps:
     - name: Checkout Repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Set Up Node.js
-      uses: actions/setup-node@v2
+      uses: actions/setup-node@v3
       with:
         node-version: '18'  # Update to Node.js 18
 
@@ -30,14 +30,14 @@ jobs:
           async function getGoldRate() {
             try {
               console.log('Launching headless browser...');
-              const browser = await puppeteer.launch();
+              const browser = await puppeteer.launch({ headless: true });
               const page = await browser.newPage();
 
               console.log('Navigating to gold rate page...');
               await page.goto('https://www.malabargoldanddiamonds.com/goldprice', { waitUntil: 'networkidle2' });
 
               // Wait for the element containing the rate to load
-              await page.waitForSelector('.price.22kt-price');
+              await page.waitForSelector('.price.22kt-price', { timeout: 30000 }); // Increase timeout if needed
 
               console.log('Extracting gold rate and date...');
               const rate = await page.$eval('.price.22kt-price', el => el.textContent.trim());
@@ -53,6 +53,9 @@ jobs:
               console.log('Read existing index.html content.');
 
               const tableEndIndex = content.lastIndexOf('</tbody>');
+              if (tableEndIndex === -1) {
+                throw new Error('No </tbody> tag found in index.html');
+              }
               content = content.slice(0, tableEndIndex) + newRow + content.slice(tableEndIndex);
 
               fs.writeFileSync(filePath, content);
@@ -72,5 +75,5 @@ jobs:
         git config --global user.name "GitHub Actions Bot"
         git config --global user.email "actions@github.com"
         git add index.html
-        git commit -m "Update gold rate in index.html"
+        git commit -m "Update gold rate in index.html" || echo "No changes to commit"
         git push origin main
