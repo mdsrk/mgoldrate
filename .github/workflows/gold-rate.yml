@@ -17,9 +17,9 @@ jobs:
         node-version: '18'
 
     - name: Install Dependencies
-      run: npm install puppeteer
+      run: npm install axios cheerio
 
-    - name: Fetch Gold Rate with Puppeteer and Update HTML
+    - name: Fetch Gold Rate and Update HTML
       run: node fetchGoldRate.js
 
     - name: Commit Changes
