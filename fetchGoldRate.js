@@ -4,35 +4,33 @@ const fs = require('fs');
 async function getGoldRate() {
   let browser;
   try {
-    console.log('Starting the gold rate fetching process...');
+    console.log('Launching headless browser...');
     browser = await puppeteer.launch({
       headless: 'new',
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
     const page = await browser.newPage();
-    console.log('New page created.');
 
     console.log('Navigating to the gold rate page...');
-    await page.goto('https://www.malabargoldanddiamonds.com/goldprice', { waitUntil: 'networkidle2' });
-    console.log('Page loaded successfully.');
-
-    console.log('Waiting for the #show-rate-block element to be available...');
-    await page.waitForSelector('#show-rate-block', { timeout: 30000 });
-    console.log('#show-rate-block element is now available.');
-
-    // Extract and log the inner HTML of the #show-rate-block element
-    const htmlContent = await page.$eval('#show-rate-block', el => el.innerHTML);
-    console.log('HTML content of #show-rate-block:', htmlContent);
-
-    // Now try to extract the gold rate and date using a different method
-    const rate = await page.evaluate(() => {
-      const rateElement = document.querySelector('#show-rate-block .price.22kt-price');
-      return rateElement ? rateElement.textContent.trim() : null;
+    await page.goto('https://www.malabargoldanddiamonds.com/goldprice', {
+      waitUntil: 'networkidle2',
     });
 
-    const date = await page.evaluate(() => {
+    console.log('Page loaded successfully.');
+    console.log('Waiting for the #show-rate-block element to be available...');
+    await page.waitForSelector('#show-rate-block');
+
+    console.log('#show-rate-block element is now available.');
+
+    // Extract the HTML content of the #show-rate-block element
+    const htmlContent = await page.$eval('#show-rate-block', el => el.innerHTML);
+    console.log('HTML content of #show-rate-block:\n', htmlContent);
+
+    // Extract the gold rate and date by accessing the span elements directly
+    const [rate, date] = await page.evaluate(() => {
+      const rateElement = document.querySelector('#show-rate-block .price.22kt-price');
       const dateElement = document.querySelector('#show-rate-block .date.update-date');
-      return dateElement ? dateElement.textContent.trim() : null;
+      return [rateElement ? rateElement.textContent.trim() : null, dateElement ? dateElement.textContent.trim() : null];
     });
 
     if (!rate || !date) {
@@ -46,7 +44,6 @@ async function getGoldRate() {
     const filePath = 'index.html';
     let content = fs.readFileSync(filePath, 'utf8');
     console.log('Read existing index.html content.');
-
     const tableEndIndex = content.lastIndexOf('</tbody>');
     if (tableEndIndex === -1) {
       throw new Error('No </tbody> tag found in index.html');
