@@ -1,67 +1,86 @@
-name: Update Gold Rate
+name: Daily Gold Rate Fetch
 
 on:
   schedule:
-    - cron: '34 8 * * *'  # Runs every day at 8:34 AM UTC
-  workflow_dispatch:  # Allows manual run
-
+    # Runs at 8:34 AM every day
+    - cron: '34 8 * * *'
+  workflow_dispatch:
 
 jobs:
-  update-gold-rate:
+  fetch_gold_rate:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '16'
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '14'  # Ensure you are using Node.js version 14
 
-      - name: Install dependencies
-        run: npm install node-fetch@2
+    - name: Install dependencies
+      run: npm install node-fetch@2
 
-      - name: Scrape gold rate and update page
-        run: |
-          node -e "
+    - name: Fetch and log gold rate
+      run: |
+        node -e "
           const fetch = require('node-fetch');
           const fs = require('fs');
-          
+        
           async function getGoldRate() {
-            const response = await fetch('https://www.malabargoldanddiamonds.com/goldprice');
-            const text = await response.text();
-            const rateRegex = /<span class=\"price 22kt-price\">(\d{1,3}(?:,\d{3})*\.\d{2}) INR<\/span>/;
-            const dateRegex = /<span class=\"date update-date\">([^<]+)<\/span>/;
+            try {
+              console.log('Fetching the gold rate...');
+              const response = await fetch('https://www.malabargoldanddiamonds.com/goldprice');
+              
+              if (!response.ok) {
+                console.log('Network response was not ok:', response.statusText);
+                return;
+              }
 
-            const rateMatch = text.match(rateRegex);
-            const dateMatch = text.match(dateRegex);
+              const text = await response.text();
+              console.log('Fetched HTML content successfully.');
 
-            if (rateMatch && dateMatch) {
-              const rate = rateMatch[1];
-              const date = dateMatch[1];
+              const rateRegex = /<span class=\"price 22kt-price\">(\\d{1,3}(?:,\\d{3})*\\.\\d{2}) INR<\\/span>/;
+              const dateRegex = /<span class=\"date update-date\">([^<]+)<\\/span>/;
 
-              const newRow = \`<tr><td>\${date}</td><td>\${rate}</td></tr>\`;
+              const rateMatch = text.match(rateRegex);
+              const dateMatch = text.match(dateRegex);
 
-              const filePath = 'index.html';
-              let content = fs.readFileSync(filePath, 'utf8');
+              if (rateMatch && dateMatch) {
+                const rate = rateMatch[1];
+                const date = dateMatch[1];
 
-              const tableEndIndex = content.lastIndexOf('</tbody>');
-              content = content.slice(0, tableEndIndex) + newRow + content.slice(tableEndIndex);
+                console.log('Gold rate:', rate);
+                console.log('Date:', date);
 
-              fs.writeFileSync(filePath, content);
-            } else {
-              console.log('Failed to fetch the gold rate.');
+                const newRow = \`<tr><td>\${date}</td><td>\${rate}</td></tr>\`;
+
+                const filePath = 'index.html';
+                let content = fs.readFileSync(filePath, 'utf8');
+                console.log('Read existing index.html content.');
+
+                const tableEndIndex = content.lastIndexOf('</tbody>');
+                content = content.slice(0, tableEndIndex) + newRow + content.slice(tableEndIndex);
+
+                fs.writeFileSync(filePath, content);
+                console.log('Updated index.html with new gold rate.');
+              } else {
+                console.log('Failed to extract the gold rate or date from the HTML content.');
+                console.log('Rate match:', rateMatch);
+                console.log('Date match:', dateMatch);
+              }
+            } catch (error) {
+              console.error('Error occurred while fetching the gold rate:', error);
             }
           }
-          
-          getGoldRate();
-          "
 
-      - name: Commit and push changes
-        run: |
-          git config --global user.email "you@example.com"
-          git config --global user.name "GitHub Actions"
-          git add index.html
-          git commit -m "Update gold rate"
-          git push
+          getGoldRate();
+        "
+    - name: Commit changes
+      run: |
+        git config --global user.email "you@example.com"
+        git config --global user.name "Your Name"
+        git add index.html
+        git commit -m "Updated gold rate"
+        git push
