@@ -12,7 +12,7 @@ async function getGoldRate() {
     const page = await browser.newPage();
     console.log('Navigating to gold rate page...');
     await page.goto('https://www.malabargoldanddiamonds.com/goldprice', { waitUntil: 'networkidle2' });
-    await page.waitForSelector('.price.22kt-price', { timeout: 30000 });
+    await page.waitForSelector('.price.22kt-price', { timeout: 120000 });
     console.log('Extracting gold rate and date...');
     const rate = await page.$eval('.price.22kt-price', el => el.textContent.trim());
     const date = await page.$eval('.date.update-date', el => el.textContent.trim());
