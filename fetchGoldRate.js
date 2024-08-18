@@ -7,13 +7,22 @@ async function getGoldRate() {
     console.log('Fetching the gold rate page...');
     const { data } = await axios.get('https://www.malabargoldanddiamonds.com/goldprice');
 
+    console.log('HTML content fetched:');
+    console.log(data);  // Log the full HTML content for debugging
+
     console.log('Parsing the HTML...');
     const $ = cheerio.load(data);
 
+    // Attempt to extract the gold rate and date
     const rate = $('.price.22kt-price').text().trim();
     const date = $('.date.update-date').text().trim();
 
     if (!rate || !date) {
+      console.log('Selectors did not match. The extracted rate or date is empty.');
+      console.log('Attempting to log the content of relevant elements...');
+      console.log('Content of .price.22kt-price:', $('.price.22kt-price').html());
+      console.log('Content of .date.update-date:', $('.date.update-date').html());
+
       throw new Error('Could not extract the gold rate or date from the page.');
     }
 
