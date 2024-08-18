@@ -1,75 +1,64 @@
-name: Daily Gold Rate Fetch
+name: Fetch Gold Rate and Update HTML
 
 on:
   schedule:
-    # Runs at 8:34 AM every day
-    - cron: '34 8 * * *'
-  workflow_dispatch:
+    - cron: '34 8 * * *'  # Runs daily at 8:34 AM UTC
+  workflow_dispatch:  # Allows manual run
 
 jobs:
-  fetch_gold_rate:
+  fetch-gold-rate:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+    - name: Checkout Repository
+      uses: actions/checkout@v2
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
+    - name: Set Up Node.js
+      uses: actions/setup-node@v2
       with:
-        node-version: '14'  # Ensure you are using Node.js version 14
+        node-version: '16'  # or any other LTS version of Node.js
 
-    - name: Install dependencies
-      run: npm install node-fetch@2
+    - name: Install Dependencies
+      run: npm install puppeteer
 
-    - name: Fetch and log gold rate
+    - name: Fetch Gold Rate with Puppeteer and Update HTML
       run: |
         node -e "
-          const fetch = require('node-fetch');
+          const puppeteer = require('puppeteer');
           const fs = require('fs');
-        
+
           async function getGoldRate() {
             try {
-              console.log('Fetching the gold rate...');
-              const response = await fetch('https://www.malabargoldanddiamonds.com/goldprice');
-              
-              if (!response.ok) {
-                console.log('Network response was not ok:', response.statusText);
-                return;
-              }
+              console.log('Launching headless browser...');
+              const browser = await puppeteer.launch();
+              const page = await browser.newPage();
 
-              const text = await response.text();
-              console.log('Fetched HTML content successfully.');
+              console.log('Navigating to gold rate page...');
+              await page.goto('https://www.malabargoldanddiamonds.com/goldprice', { waitUntil: 'networkidle2' });
 
-              const rateRegex = /<span class=\"price 22kt-price\">(\\d{1,3}(?:,\\d{3})*\\.\\d{2}) INR<\\/span>/;
-              const dateRegex = /<span class=\"date update-date\">([^<]+)<\\/span>/;
+              // Wait for the element containing the rate to load
+              await page.waitForSelector('.price.22kt-price');
 
-              const rateMatch = text.match(rateRegex);
-              const dateMatch = text.match(dateRegex);
+              console.log('Extracting gold rate and date...');
+              const rate = await page.$eval('.price.22kt-price', el => el.textContent.trim());
+              const date = await page.$eval('.date.update-date', el => el.textContent.trim());
 
-              if (rateMatch && dateMatch) {
-                const rate = rateMatch[1];
-                const date = dateMatch[1];
+              console.log('Gold rate:', rate);
+              console.log('Date:', date);
 
-                console.log('Gold rate:', rate);
-                console.log('Date:', date);
+              const newRow = \`<tr><td>\${date}</td><td>\${rate}</td></tr>\`;
 
-                const newRow = \`<tr><td>\${date}</td><td>\${rate}</td></tr>\`;
+              const filePath = 'index.html';
+              let content = fs.readFileSync(filePath, 'utf8');
+              console.log('Read existing index.html content.');
 
-                const filePath = 'index.html';
-                let content = fs.readFileSync(filePath, 'utf8');
-                console.log('Read existing index.html content.');
+              const tableEndIndex = content.lastIndexOf('</tbody>');
+              content = content.slice(0, tableEndIndex) + newRow + content.slice(tableEndIndex);
 
-                const tableEndIndex = content.lastIndexOf('</tbody>');
-                content = content.slice(0, tableEndIndex) + newRow + content.slice(tableEndIndex);
+              fs.writeFileSync(filePath, content);
+              console.log('Updated index.html with new gold rate.');
 
-                fs.writeFileSync(filePath, content);
-                console.log('Updated index.html with new gold rate.');
-              } else {
-                console.log('Failed to extract the gold rate or date from the HTML content.');
-                console.log('Rate match:', rateMatch);
-                console.log('Date match:', dateMatch);
-              }
+              await browser.close();
             } catch (error) {
               console.error('Error occurred while fetching the gold rate:', error);
             }
@@ -77,10 +66,11 @@ jobs:
 
           getGoldRate();
         "
-    - name: Commit changes
+
+    - name: Commit Changes
       run: |
-        git config --global user.email "you@example.com"
-        git config --global user.name "Your Name"
+        git config --global user.name "GitHub Actions Bot"
+        git config --global user.email "actions@github.com"
         git add index.html
-        git commit -m "Updated gold rate"
-        git push
+        git commit -m "Update gold rate in index.html"
+        git push origin main
