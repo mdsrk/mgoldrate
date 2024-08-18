@@ -38,7 +38,7 @@ async function fetchGoldRate() {
 
       // Select and extract the .date.update-date element
       console.log("Selecting the .date.update-date element...");
-      const dateElement = showRateBlock.find('.date.update-date');
+      const dateElement = showRateBlock.find('.update-date');
       console.log("Found .date.update-date element. HTML:", dateElement.html());
 
       if (dateElement.length) {
