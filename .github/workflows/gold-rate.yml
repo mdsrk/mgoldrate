@@ -16,7 +16,7 @@ jobs:
     - name: Set Up Node.js
       uses: actions/setup-node@v2
       with:
-        node-version: '16'  # or any other LTS version of Node.js
+        node-version: '18'  # Update to Node.js 18
 
     - name: Install Dependencies
       run: npm install puppeteer
