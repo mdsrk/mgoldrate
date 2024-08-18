@@ -19,39 +19,26 @@ async function getGoldRate() {
     await page.goto('https://www.malabargoldanddiamonds.com/goldprice', { waitUntil: 'networkidle2' });
     console.log('Page loaded successfully.');
 
-    console.log('Waiting for the selector #show-rate-block to be available...');
+    console.log('Waiting for the #show-rate-block element to be available...');
     await page.waitForSelector('#show-rate-block', { timeout: 60000 });
-    console.log('Selector #show-rate-block is now available.');
+    console.log('#show-rate-block element is now available.');
 
     console.log('Extracting gold rate and date from the page...');
-    
-    const rate = await page.evaluate(() => {
-      console.log('Inside page.evaluate for extracting rate...');
-      const element = document.querySelector('#show-rate-block .price.22kt-price');
-      if (element) {
-        console.log('Rate element found.');
-        return element.textContent.trim();
+    const result = await page.evaluate(() => {
+      const rateElement = document.querySelector('#show-rate-block .price.22kt-price');
+      const dateElement = document.querySelector('#show-rate-block .date.update-date');
+
+      if (rateElement && dateElement) {
+        return {
+          rate: rateElement.textContent.trim(),
+          date: dateElement.textContent.trim()
+        };
       } else {
-        console.log('Rate element not found.');
-        return null;
+        throw new Error('Rate or date element not found.');
       }
     });
 
-    const date = await page.evaluate(() => {
-      console.log('Inside page.evaluate for extracting date...');
-      const element = document.querySelector('#show-rate-block .date.update-date');
-      if (element) {
-        console.log('Date element found.');
-        return element.textContent.trim();
-      } else {
-        console.log('Date element not found.');
-        return null;
-      }
-    });
-
-    if (!rate || !date) {
-      throw new Error('Failed to extract the gold rate or date. Rate or date is null.');
-    }
+    const { rate, date } = result;
 
     console.log('Gold rate:', rate);
     console.log('Date:', date);
@@ -59,7 +46,7 @@ async function getGoldRate() {
     const newRow = `<tr><td>${date}</td><td>${rate}</td></tr>`;
     const filePath = 'index.html';
     console.log('Reading existing index.html content...');
-    
+
     let content = fs.readFileSync(filePath, 'utf8');
     console.log('Existing index.html content read.');
 
@@ -67,7 +54,7 @@ async function getGoldRate() {
     if (tableEndIndex === -1) {
       throw new Error('No </tbody> tag found in index.html');
     }
-    
+
     console.log('Appending new row to index.html...');
     content = content.slice(0, tableEndIndex) + newRow + content.slice(tableEndIndex);
     fs.writeFileSync(filePath, content);
