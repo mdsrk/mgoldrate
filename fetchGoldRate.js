@@ -1,55 +1,71 @@
-const axios = require('axios');
-const cheerio = require('cheerio');
+const puppeteer = require('puppeteer');
 const fs = require('fs');
 
-async function fetchGoldRate() {
+async function getGoldRate() {
+  const url = 'https://www.malabargoldanddiamonds.com/goldprice';
+  
+  let browser;
   try {
-    console.log("Starting the gold rate fetching process...");
-    const url = 'https://www.malabargoldanddiamonds.com/goldprice';
-    console.log("Fetching the gold rate page...");
-
-    const response = await axios.get(url);
-    console.log("Gold rate page fetched successfully.");
+    console.log('Starting the gold rate fetching process...');
     
-    const html = response.data;
-    console.log("Parsing the HTML...");
+    // Launch headless browser
+    console.log('Launching headless browser...');
+    browser = await puppeteer.launch({
+      headless: 'new',
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+    const page = await browser.newPage();
+    console.log('New page created.');
 
-    const $ = cheerio.load(html);
-    const showRateBlock = $('#show-rate-block');
-    console.log("Found #show-rate-block element:", showRateBlock.html());
+    // Navigate to the page
+    console.log('Navigating to the gold rate page...');
+    await page.goto(url, { waitUntil: 'networkidle2' });
+    console.log('Page loaded successfully.');
 
-    const rateElement = showRateBlock.find('.price.22kt-price');
-    const dateElement = showRateBlock.find('.date.update-date');
-    console.log("Found .price.22kt-price element:", rateElement.html());
-    console.log("Found .date.update-date element:", dateElement.html());
+    // Wait for the #show-rate-block element to be available
+    console.log('Waiting for the #show-rate-block element to be available...');
+    await page.waitForSelector('#show-rate-block', { timeout: 30000 });
+    console.log('#show-rate-block element is now available.');
 
-    if (rateElement.length === 0 || dateElement.length === 0) {
-      throw new Error('Could not extract the gold rate or date from the page.');
+    // Extract HTML content of #show-rate-block
+    const htmlContent = await page.evaluate(() => document.querySelector('#show-rate-block').innerHTML);
+    console.log('HTML content of #show-rate-block:', htmlContent);
+
+    // Extract gold rate and date
+    console.log('Extracting gold rate and date from the page...');
+    const rate = await page.evaluate(() => document.querySelector('.price.22kt-price')?.textContent.trim());
+    const date = await page.evaluate(() => document.querySelector('.date.update-date')?.textContent.trim());
+
+    console.log('Gold rate extracted:', rate || 'Not found');
+    console.log('Date extracted:', date || 'Not found');
+
+    if (!rate || !date) {
+      throw new Error('Failed to extract gold rate or date.');
     }
 
-    const rate = rateElement.text().trim();
-    const date = dateElement.text().trim();
-    console.log("Gold rate extracted:", rate);
-    console.log("Date extracted:", date);
-
+    // Update the index.html file
     const newRow = `<tr><td>${date}</td><td>${rate}</td></tr>`;
-
     const filePath = 'index.html';
     let content = fs.readFileSync(filePath, 'utf8');
-    console.log("Read existing index.html content.");
+    console.log('Read existing index.html content.');
 
     const tableEndIndex = content.lastIndexOf('</tbody>');
     if (tableEndIndex === -1) {
       throw new Error('No </tbody> tag found in index.html');
     }
     content = content.slice(0, tableEndIndex) + newRow + content.slice(tableEndIndex);
+
     fs.writeFileSync(filePath, content);
-    console.log("Updated index.html with new gold rate.");
+    console.log('Updated index.html with new gold rate.');
 
   } catch (error) {
     console.error('Error occurred while fetching the gold rate:', error);
     process.exit(1);
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
   }
 }
 
-fetchGoldRate();
+getGoldRate();
